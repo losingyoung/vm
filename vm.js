@@ -1,6 +1,7 @@
 const code = [0,1,1,'a',0,2,1,'b',2,0,2,1,3,,1,'c',0,2,2,2,0,'abc',0,console,0,'log',4,,5, [console, 2], 6, 2];
 
-function vm(op, scope) {
+// 一个function就是一个scope
+function vmFunction(op,params) {
   var stack = [];
   /**
    * first: {
@@ -11,6 +12,7 @@ function vm(op, scope) {
    */
   var scopeIds = [];
   var scopeValues = []
+  var i
   var ops = [
     //0: push值
     function pushToStack(param) {
@@ -27,7 +29,7 @@ function vm(op, scope) {
         if (typeof param !== 'number') {
             stack.push(param)
             return
-        } 
+        }
         stack.push(scopeValues[param])
     },
     // 3: 相加
@@ -57,11 +59,34 @@ function vm(op, scope) {
         const value = stack.pop()
         const scopeIdx = stack.pop()
         scopeValues[scopeIdx] = value
+    },
+    // 7
+    function functionDecl(functionIdentifier){
+      const idx = scopeIds.length
+      scopeIds[idx] = functionIdentifier
+      const innerOpcodes = op[++i]
+      scopeValues[idx] = function(){
+        var args= []
+        for (var i=0;i<arguments.length;i++){
+          args.push(arguments[i])
+        }
+        var curParams = []
+        const {ret, changedParam} = vmFunction.apply(this, [innerOpcodes, args])
+        
+        return ret
+      }
     }
   ];
-  for (let i = 0; i < op.length; i += 2) {
-    const opO = ops[op[i]](op[i + 1]);
+  params = params || []
+  for (var p = 0; p < params.length;p++){
+    const idx = scopeIds.length
+    scopeIds[idx] = 'param'+idx
+    scopeValues[idx] = params[p]
+  }
+  for (i = 0; i < op.length; i += 2) {
+    const opO = ops[op[i]]();
   }
   console.log(scopeIds, scopeValues)
 }
-vm(code, global);
+vmFunction(code);
+//一个function定义对应到一个function
